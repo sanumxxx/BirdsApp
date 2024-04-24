@@ -2,8 +2,54 @@ import tkinter as tk
 from tkinter import ttk
 import pandas as pd
 import matplotlib.pyplot as plt
+import requests
+import subprocess
+import git
+import os
+import zipfile
 
-current_version = 'v1.1'
+
+current_version = 'v1.2'
+github_repo = 'https://api.github.com/repos/sanumxxx/BirdsApp/releases/latest'
+
+
+# Функция для проверки обновлений на GitHub
+def check_for_updates(current_version):
+    try:
+        response = requests.get(github_repo)
+        data = response.json()
+        latest_version = data['tag_name']
+        assets = data.get('assets', [])
+        if latest_version != current_version and assets:
+            print("Доступно обновление.")
+            return True, assets[0]['browser_download_url']
+        else:
+            print("У вас установлена последняя версия.")
+            return False, None
+    except Exception as e:
+        print("Ошибка при проверке обновлений:", str(e))
+        return False, None
+
+
+# Функция для загрузки обновлений с GitHub
+def update_from_github(download_url):
+    try:
+        local_filename = download_url.split('/')[-1]
+        # Скачиваем файл
+        with requests.get(download_url, stream=True) as r:
+            r.raise_for_status()
+            with open(local_filename, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        # Распаковываем архив
+        with zipfile.ZipFile(local_filename, 'r') as zip_ref:
+            zip_ref.extractall(os.getcwd())
+        os.remove(local_filename)
+        print("Программа успешно обновлена. Пожалуйста, перезапустите ее.")
+    except Exception as e:
+        print("Ошибка при обновлении программы:", str(e))
+
+
 
 # Загрузка данных
 file_path = 'botiev2017.xlsx'
@@ -161,4 +207,9 @@ hist_button = ttk.Button(graph_button_frame, text="График", command=show_h
 hist_button.pack(side=tk.LEFT, padx=10, pady=10)
 
 
+update_available, download_url = check_for_updates(current_version)
+if update_available:
+    update_from_github(download_url)
+
+# Запуск основного цикла обработки событий
 root.mainloop()
