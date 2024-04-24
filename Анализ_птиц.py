@@ -9,9 +9,11 @@ current_version = 'v1.5'
 
 root = tk.Tk()
 root.title("Анализ птиц")
+root.state('zoomed')
+
 
 # Загрузка данных
-file_path = 'botiev2017.xlsx'
+file_path = '_internal/botiev2017.xlsx'
 data = pd.read_excel(file_path)
 
 # Преобразование дат
@@ -64,6 +66,13 @@ def show_histogram():
     counts, bins, patches = plt.hist(filtered_data['Высота миграции, метров'],
                                      weights=filtered_data['Кол-во птиц в миграции'],
                                      bins=20, color='blue', alpha=0.7)
+
+    for rect in patches:
+        height = rect.get_height()
+        if(height > 0):
+            plt.text(rect.get_x() + rect.get_width() / 2., height, f'{int(height)}',
+                     ha='center', va='bottom')
+
 
     plt.title(f'Распределение высоты полета для {bird_type}, {season}')
     plt.xlabel('Высота миграции, метров')
@@ -130,5 +139,14 @@ graph_button_frame.pack(side=tk.LEFT, fill=tk.X, padx=10, pady=5)
 hist_button = ttk.Button(graph_button_frame, text="График", command=show_histogram)
 hist_button.pack(side=tk.LEFT, padx=10, pady=10)
 
+root.iconbitmap('_internal/icon.ico')
+
+img = tk.PhotoImage(file='_internal/icon.png')
+root.iconphoto(True, img)
 # Запуск основного цикла обработки событий
 root.mainloop()
+
+
+#
+#   pyinstaller --windowed --icon=_internal/icon.ico --add-data "_internal/icon.ico;." --add-data "_internal/icon.png;." --add-data "_internal/botiev2017.xlsx;." Анализ_птиц.py
+#
