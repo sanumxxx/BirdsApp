@@ -3,7 +3,7 @@ from tkinter import ttk
 import pandas as pd
 import matplotlib.pyplot as plt
 
-current_version = 'v1.0'
+current_version = 'v1.1'
 
 # Загрузка данных
 file_path = 'botiev2017.xlsx'
