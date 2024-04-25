@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from tkinter import messagebox
 import os
 
-current_version = 'v1.6'
+current_version = 'v1.6.2'
 
 root = tk.Tk()
 root.title("Анализ птиц")
