@@ -12,6 +12,7 @@ import webview
 
 current_version = 'v1.6.3'
 
+
 root = tk.Tk()
 root.title("Анализ птиц")
 root.state('zoomed')
@@ -20,6 +21,15 @@ root.state('zoomed')
 # Загрузка данных
 file_path = '_internal/botiev2021.xlsx'
 data = pd.read_excel(file_path)
+global year
+global database_label
+year = file_path.split('botiev')[1][:4]
+
+def initialize_table():
+    update_table(data)
+
+
+
 
 # Преобразование дат
 data['Дата-время наблюдения'] = pd.to_datetime(data['Дата-время наблюдения'], errors='coerce')
@@ -31,6 +41,8 @@ def load_file():
                                            filetypes=[("Excel files", "*.xlsx *.xls")])
     if file_path:
         global data
+        global year
+        global database_label
         data = pd.read_excel(file_path)
         data['Дата-время наблюдения'] = pd.to_datetime(data['Дата-время наблюдения'], errors='coerce')
         data['Сезон'] = data['Дата-время наблюдения'].apply(get_season)
@@ -42,8 +54,16 @@ def load_file():
         bird_var.set(bird_options[0])
         season_var.set(season_options[0])
 
+        # Извлекаем год из имени файла и обновляем надпись
+        year = file_path.split('/')[-1].split('botiev')[1][
+               :4]  # Исправьте разделитель на '\\' если используется Windows
+        database_label.config(text=f'База данных птиц за {year} г.')
+
 toolbar = ttk.Frame(root)
 toolbar.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
+
+
+
 
 load_button = ttk.Button(toolbar, text="Загрузить файл", command=load_file)
 load_button.pack(side=tk.LEFT)
@@ -80,6 +100,10 @@ def show_map():
 # Добавление кнопки для показа карты
 map_button = ttk.Button(toolbar, text="Показать карту", command=show_map)
 map_button.pack(side=tk.LEFT)
+
+database_label = ttk.Label(toolbar, text=f'База данных птиц за {year} г.')
+database_label.pack(side=tk.RIGHT)
+
 
 def get_season(date):
     month = date.month
@@ -171,7 +195,7 @@ season_options = ["Весь период"] + sorted(data['Сезон'].unique().
 season_menu = ttk.OptionMenu(toolbar, season_var, season_options[0], *season_options)
 season_menu.pack(side=tk.LEFT)
 
-load_button = ttk.Button(toolbar, text="Загрузить", command=filter_data)
+load_button = ttk.Button(toolbar, text="Обновить", command=filter_data)
 load_button.pack(side=tk.LEFT)
 
 table_frame = ttk.Frame(root, relief=tk.RAISED, borderwidth=1)
@@ -207,6 +231,8 @@ root.iconbitmap('_internal/icon.ico')
 img = tk.PhotoImage(file='_internal/icon.png')
 root.iconphoto(True, img)
 # Запуск основного цикла обработки событий
+
+initialize_table()
 root.mainloop()
 
 
