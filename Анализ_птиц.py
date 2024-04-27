@@ -10,7 +10,7 @@ from tkhtmlview import HTMLLabel
 import tempfile
 import webview
 
-current_version = 'v1.6.4.1'
+current_version = 'v1.6.4.2'
 
 
 root = tk.Tk()
@@ -19,7 +19,7 @@ root.state('zoomed')
 
 
 # Загрузка данных
-file_path = '_internal/botiev2021.xlsx'
+file_path = '_internal/botiev2017.xlsx'
 data = pd.read_excel(file_path)
 global year
 global database_label
@@ -70,23 +70,40 @@ load_button.pack(side=tk.LEFT)
 
 
 def show_map():
-    # Проверяем, есть ли необходимые колонки в данных
-    if 'Координаты старта (Lat Long)' in data.columns and 'Координаты финиша (Lat Long)' in data.columns:
-        # Создаем карту, центрируем по средним координатам старта
-        start_coords = data['Координаты старта (Lat Long)'].str.split(' ', expand=True).astype(float)
-        finish_coords = data['Координаты финиша (Lat Long)'].str.split(' ', expand=True).astype(float)
-        m = folium.Map(
-            location=[start_coords[0].mean(), start_coords[1].mean()],
-            zoom_start=12
-        )
+    # Пересоздаем карту с учетом текущих данных в таблице
+    filtered_data = []
+    for item in tree.get_children():
+        row = tree.item(item, "values")
+        filtered_data.append(row)
 
-        # Добавляем метки для старта и финиша
-        for idx, row in data.iterrows():
-            start_lat, start_long = map(float, row['Координаты старта (Lat Long)'].split(' '))
-            finish_lat, finish_long = map(float, row['Координаты финиша (Lat Long)'].split(' '))
-            folium.Marker([start_lat, start_long], icon=folium.Icon(color='green'), tooltip="Старт").add_to(m)
-            folium.Marker([finish_lat, finish_long], icon=folium.Icon(color='red'), tooltip="Финиш").add_to(m)
-            folium.PolyLine([(start_lat, start_long), (finish_lat, finish_long)], color='blue').add_to(m)
+    if filtered_data:
+        # Преобразуем список списков в DataFrame
+        filtered_df = pd.DataFrame(filtered_data, columns=data.columns)
+
+        # Преобразуем строки в нужные типы данных, если это необходимо
+        filtered_df['Координаты старта (Lat Long)'] = filtered_df['Координаты старта (Lat Long)'].apply(lambda x: tuple(map(float, x.split(' '))))
+        filtered_df['Координаты финиша (Lat Long)'] = filtered_df['Координаты финиша (Lat Long)'].apply(lambda x: tuple(map(float, x.split(' '))))
+
+        # Создаем карту
+        if not filtered_df.empty:
+            start_coords = filtered_df['Координаты старта (Lat Long)'].iloc[0]
+            m = folium.Map(location=start_coords, zoom_start=12)
+
+            # Добавляем метки для старта и финиша
+            for index, row in filtered_df.iterrows():
+                folium.Marker(row['Координаты старта (Lat Long)'], icon=folium.Icon(color='green'), tooltip="Старт").add_to(m)
+                folium.Marker(row['Координаты финиша (Lat Long)'], icon=folium.Icon(color='red'), tooltip="Финиш").add_to(m)
+                folium.PolyLine([row['Координаты старта (Lat Long)'], row['Координаты финиша (Lat Long)']], color='blue').add_to(m)
+
+            # Сохраняем карту в HTML и отображаем
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
+            m.save(temp_file.name)
+            temp_file.close()
+            webview.create_window('Карта маршрута', temp_file.name)
+            webview.start()
+        else:
+            messagebox.showinfo("Информация", "Нет данных для отображения на карте.")
+
 
         # Сохраняем карту в HTML
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
@@ -237,5 +254,5 @@ root.mainloop()
 
 
 #
-#   pyinstaller --windowed --icon=_internal/icon.ico --add-data "_internal/icon.ico;." --add-data "_internal/icon.png;." --add-data "_internal/botiev2017.xlsx;." Анализ_птиц.py
+#   pyinstaller --windowed --icon=_internal/icon.ico --add-data "_internal/icon.ico;." --add-data "_internal/icon.png;." --add-data "_internal/botiev2017.xlsx;." --add-data "_internal/botiev2021.xlsx;." Анализ_птиц.py
 #
