@@ -10,7 +10,7 @@ from tkhtmlview import HTMLLabel
 import tempfile
 import webview
 
-current_version = 'v1.6.3'
+current_version = 'v1.6.4.1'
 
 
 root = tk.Tk()
