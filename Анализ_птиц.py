@@ -1,11 +1,16 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 import pandas as pd
 import matplotlib.pyplot as plt
 from tkinter import messagebox
 import os
+import folium
+import webbrowser
+from tkhtmlview import HTMLLabel
+import tempfile
+import webview
 
-current_version = 'v1.6.2'
+current_version = 'v1.6.3'
 
 root = tk.Tk()
 root.title("Анализ птиц")
@@ -13,13 +18,69 @@ root.state('zoomed')
 
 
 # Загрузка данных
-file_path = '_internal/botiev2017.xlsx'
+file_path = '_internal/botiev2021.xlsx'
 data = pd.read_excel(file_path)
 
 # Преобразование дат
 data['Дата-время наблюдения'] = pd.to_datetime(data['Дата-время наблюдения'], errors='coerce')
 
 # Определение сезона по месяцу
+
+def load_file():
+    file_path = filedialog.askopenfilename(title="Выберите файл Excel",
+                                           filetypes=[("Excel files", "*.xlsx *.xls")])
+    if file_path:
+        global data
+        data = pd.read_excel(file_path)
+        data['Дата-время наблюдения'] = pd.to_datetime(data['Дата-время наблюдения'], errors='coerce')
+        data['Сезон'] = data['Дата-время наблюдения'].apply(get_season)
+        update_table(data)
+        bird_options = ["Все виды"] + sorted(data['Вид птицы'].unique().tolist())
+        bird_menu['menu'].delete(0, 'end')
+        for option in bird_options:
+            bird_menu['menu'].add_command(label=option, command=tk._setit(bird_var, option))
+        bird_var.set(bird_options[0])
+        season_var.set(season_options[0])
+
+toolbar = ttk.Frame(root)
+toolbar.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
+
+load_button = ttk.Button(toolbar, text="Загрузить файл", command=load_file)
+load_button.pack(side=tk.LEFT)
+
+
+def show_map():
+    # Проверяем, есть ли необходимые колонки в данных
+    if 'Координаты старта (Lat Long)' in data.columns and 'Координаты финиша (Lat Long)' in data.columns:
+        # Создаем карту, центрируем по средним координатам старта
+        start_coords = data['Координаты старта (Lat Long)'].str.split(' ', expand=True).astype(float)
+        finish_coords = data['Координаты финиша (Lat Long)'].str.split(' ', expand=True).astype(float)
+        m = folium.Map(
+            location=[start_coords[0].mean(), start_coords[1].mean()],
+            zoom_start=12
+        )
+
+        # Добавляем метки для старта и финиша
+        for idx, row in data.iterrows():
+            start_lat, start_long = map(float, row['Координаты старта (Lat Long)'].split(' '))
+            finish_lat, finish_long = map(float, row['Координаты финиша (Lat Long)'].split(' '))
+            folium.Marker([start_lat, start_long], icon=folium.Icon(color='green'), tooltip="Старт").add_to(m)
+            folium.Marker([finish_lat, finish_long], icon=folium.Icon(color='red'), tooltip="Финиш").add_to(m)
+            folium.PolyLine([(start_lat, start_long), (finish_lat, finish_long)], color='blue').add_to(m)
+
+        # Сохраняем карту в HTML
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
+        m.save(temp_file.name)
+        temp_file.close()
+
+        # Отображение карты в HTMLLabel внутри приложения Tkinter
+        webview.create_window('Карта маршрута', temp_file.name)
+        webview.start()
+
+# Добавление кнопки для показа карты
+map_button = ttk.Button(toolbar, text="Показать карту", command=show_map)
+map_button.pack(side=tk.LEFT)
+
 def get_season(date):
     month = date.month
     if 3 <= month <= 5:
@@ -32,6 +93,8 @@ def get_season(date):
         return 'Зима'
 
 data['Сезон'] = data['Дата-время наблюдения'].apply(get_season)
+
+
 
 # Функция для обновления таблицы
 def update_table(filtered_data):
